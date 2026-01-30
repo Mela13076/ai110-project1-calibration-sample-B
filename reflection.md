@@ -8,6 +8,15 @@ Answer each question in 3 to 5 sentences. Be specific and honest about what actu
 - List at least two concrete bugs you noticed at the start  
   (for example: "the secret number kept changing" or "the hints were backwards").
 
+1. If the secret number is 52 and the guess is 50, the game should provide a "Higher" hint; if the guess is 54, it should provide a "Lower" hint. The game incorrectly told me to go "Lower" for a guess of 50 and "Higher" for a guess of 54 when the secret was 52. The return statements in the conditional operators in the check_guess function are swapped, saying "Too Low" when the guess is too high and "Too High" when the guess is too low.
+
+2. Selecting "Easy" mode should update all UI elements (the "blue card" info) to show the 1-20 range and 6 attempts. While the internal logic may change, the blue informational card does not update to reflect the new difficulty parameters. The Streamlit UI component responsible for displaying the game stats is not being re-rendered or updated when the st.selectbox for difficulty changes.
+
+3. Clicking "New Game" should clear all previous game data, including error messages (red boxes) and guess history. The "red message" and the previous game's history remain visible on the screen after a new game starts. The st.session_state variables for history and error messages are not being cleared or overwritten during the new game initialization function.
+
+4. Switching the difficulty level should trigger a fresh game state with a new secret number and reset attempts. Changing the difficulty updates the attempt count, but it does not automatically start a new game unless the "New Game" button is manually pressed. The difficulty selection logic lacks a trigger to reset the secret_number in the st.session_state
+
+
 ---
 
 ## 2. How did you use AI as a teammate?
