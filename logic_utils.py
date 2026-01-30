@@ -27,7 +27,7 @@ def parse_guess(raw: str):
         # Handling floats/decimals gracefully
         value = int(float(raw))
         return True, value, None
-    except ValueError:
+    except (ValueError, OverflowError):
         return False, None, "That is not a number."
 
 

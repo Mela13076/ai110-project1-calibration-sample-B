@@ -184,3 +184,79 @@ def test_update_score_no_change_on_too_low():
     """Too Low does not change score."""
     score = update_score(50, "Too Low", 2)
     assert score == 50
+
+
+# --- Advanced edge cases (negative, decimals, extremely large) ---
+
+
+def test_edge_negative_number_parses_and_compares():
+    """Edge case: Negative numbers are valid input but outside game range (1–100).
+    Parser accepts them; check_guess still returns correct hint (no crash).
+    """
+    ok, value, err = parse_guess("-10")
+    assert ok is True
+    assert value == -10
+    assert err is None
+    outcome, message = check_guess(-10, 52)
+    assert outcome == "Too Low"
+    assert "HIGHER" in message.upper()
+
+
+def test_edge_negative_guess_vs_positive_secret():
+    """Negative guess vs positive secret: always Too Low."""
+    outcome, _ = check_guess(-1, 1)
+    assert outcome == "Too Low"
+    outcome, _ = check_guess(-999, 50)
+    assert outcome == "Too Low"
+
+
+def test_edge_decimal_truncates_to_zero():
+    """Edge case: Decimals like '0.9' or '-0.1' truncate to 0 (int truncates toward zero).
+    Game range is 1–100, so 0 is out-of-range but accepted by parser.
+    """
+    ok, value, err = parse_guess("0.9")
+    assert ok is True
+    assert value == 0
+    assert err is None
+    ok, value, err = parse_guess("-0.1")
+    assert ok is True
+    assert value == 0
+
+
+def test_edge_decimal_truncation_boundary():
+    """Edge case: '52.999999999' truncates to 52, not 53."""
+    ok, value, err = parse_guess("52.999999999")
+    assert ok is True
+    assert value == 52
+    ok, value, err = parse_guess("1.1")
+    assert ok is True
+    assert value == 1
+
+
+def test_edge_very_large_number_parses_and_compares():
+    """Edge case: Very large but finite numbers (e.g. 1e15) parse and check_guess works."""
+    ok, value, err = parse_guess("1000000000000000")
+    assert ok is True
+    assert value == 1_000_000_000_000_000
+    assert err is None
+    outcome, message = check_guess(1_000_000_000_000_000, 50)
+    assert outcome == "Too High"
+    assert "LOWER" in message.upper()
+
+
+def test_edge_scientific_notation_parses():
+    """Edge case: Scientific notation '1e10' parses to integer."""
+    ok, value, err = parse_guess("1e10")
+    assert ok is True
+    assert value == 10_000_000_000
+    outcome, _ = check_guess(value, 1)
+    assert outcome == "Too High"
+
+
+def test_edge_overflow_returns_error_not_crash():
+    """Edge case: Extremely large float (e.g. 1e400) overflows; parser returns error, does not raise."""
+    ok, value, err = parse_guess("1e400")
+    assert ok is False
+    assert value is None
+    assert err is not None
+    assert "not a number" in err or "number" in err.lower()
