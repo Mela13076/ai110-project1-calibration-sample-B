@@ -1,7 +1,16 @@
 import random
 import streamlit as st
 
-from logic_utils import check_guess, get_attempt_limit, get_range_for_difficulty, parse_guess, update_score
+from logic_utils import (
+    check_guess,
+    get_attempt_limit,
+    get_points_for_win,
+    get_range_for_difficulty,
+    load_high_score,
+    parse_guess,
+    save_high_score,
+    update_score,
+)
 
 # --- UI SETUP ---
 st.set_page_config(page_title="Glitchy Guesser", page_icon="🎮")
@@ -35,6 +44,12 @@ low, high = get_range_for_difficulty(difficulty)
 
 st.sidebar.caption(f"Range: {low} to {high}")
 st.sidebar.caption(f"Attempts allowed: {attempt_limit}")
+
+# --- High score (from file) ---
+high_score_data = load_high_score()
+st.sidebar.metric("🏆 Best score", high_score_data["score"])
+if high_score_data.get("difficulty"):
+    st.sidebar.caption(f"Best: {high_score_data['attempts']} attempts on {high_score_data['difficulty']}")
 
 # --- SESSION STATE INITIALIZATION ---
 if "secret" not in st.session_state:
@@ -89,22 +104,47 @@ if submit and raw_guess:
     else:
         # Logic fix: Ensure secret is always int for comparison
         outcome, message = check_guess(guess_int, int(st.session_state.secret))
-        st.session_state.history.append(f"Guess {st.session_state.attempts}: {guess_int} -> {outcome}")
+        st.session_state.history.append({
+            "attempt": st.session_state.attempts,
+            "guess": guess_int,
+            "outcome": outcome,
+        })
 
         if outcome == "Win":
             st.balloons()
             st.session_state.status = "won"
             st.session_state.score = update_score(st.session_state.score, "Win", st.session_state.attempts)
+            # Persist high score if this game beats it
+            points_this_game = get_points_for_win(st.session_state.attempts)
+            if points_this_game > high_score_data["score"]:
+                save_high_score(points_this_game, difficulty, st.session_state.attempts)
         elif st.session_state.attempts >= attempt_limit:
             st.session_state.status = "lost"
         else:
             st.warning(message)
 
-# --- HISTORY DISPLAY ---
+# --- Guess history sidebar (visual: where each guess fell on the range) ---
+if st.session_state.history:
+    st.sidebar.divider()
+    st.sidebar.subheader("📊 Guess history")
+    for i, h in enumerate(st.session_state.history):
+        attempt, guess, outcome = h["attempt"], h["guess"], h["outcome"]
+        st.sidebar.caption(f"Guess {attempt}: **{guess}** → {outcome}")
+        st.sidebar.slider(
+            "Position",
+            min_value=low,
+            max_value=high,
+            value=guess,
+            key=f"hist_slider_{i}",
+            disabled=True,
+            label_visibility="collapsed",
+        )
+
+# --- HISTORY DISPLAY (main area) ---
 if st.session_state.history:
     st.write("### Guess History")
     for h in st.session_state.history:
-        st.text(h)
+        st.text(f"Guess {h['attempt']}: {h['guess']} → {h['outcome']}")
 
 with st.expander("Developer Debug Info"):
     st.write(f"Secret: {st.session_state.secret}")
